@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>PostgreSQL Dark Mode Console</title>
+    <style>
+        body {
+            background-color: #333;
+            color: white;
+            font-family: monospace;
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        #console {
+            width: 80%;
+            margin: auto;
+            background-color: #222;
+            padding: 20px;
+            border-radius: 5px;
+        }
+
+        #sqlInput {
+            width: 100%;
+            background-color: #111;
+            color: lime;
+            border: none;
+            padding: 10px;
+            margin-bottom: 10px;
+            min-height: 100px;
+            white-space: pre-wrap;
+            overflow-wrap: break-word;
+            outline: none;
+        }
+
+        #output {
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            margin-top: 20px;
+        }
+
+        /* Responsive adjustments */
+        @media (max-width: 600px) {
+            #console {
+                width: 95%;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div id="console">
+        <div id="sqlInput" contenteditable="true"></div>
+        <textarea id="hiddenQueryInput" name="query" style="display: none;"></textarea>
+        <button onclick="runQuery()">Run Query</button>
+        <pre id="output"></pre>
+    </div>
+
+    <script>
+        document.getElementById('sqlInput').addEventListener('input', function () {
+            var sqlKeywords = ["SELECT", "FROM", "WHERE", "INSERT", "UPDATE", "DELETE", "CREATE", "TABLE", "DROP", "ALTER"]; // Add more keywords as needed
+            var userInput = this.innerText;
+            var formattedInput = userInput.replace(/\b(\w+)\b/g, function (match) {
+                if (sqlKeywords.includes(match.toUpperCase())) {
+                    return '<span style="font-weight: bold; color: blue;">' + match.toUpperCase() + '</span>';
+                } else {
+                    return match;
+                }
+            });
+
+            document.getElementById('hiddenQueryInput').value = userInput; // Update hidden textarea
+            this.innerHTML = formattedInput; // Update displayed content
+            placeCaretAtEnd(this);
+        });
+
+        function placeCaretAtEnd(el) {
+            el.focus();
+            if (typeof window.getSelection != "undefined" && typeof document.createRange != "undefined") {
+                var range = document.createRange();
+                range.selectNodeContents(el);
+                range.collapse(false);
+                var sel = window.getSelection();
+                sel.removeAllRanges();
+                sel.addRange(range);
+            }
+        }
+
+        async function runQuery() {
+            try {
+                const query = document.getElementById('hiddenQueryInput').value;
+                const response = await fetch('http://localhost:3000/run-query', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ query })
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const result = await response.json();
+                document.getElementById('output').innerText = JSON.stringify(result, null, 2);
+            } catch (error) {
+                console.error('Error:', error);
+                document.getElementById('output').innerText = `Error: ${error.message}`;
+            }
+        }
+    </script>
+</body>
+
+</html>
